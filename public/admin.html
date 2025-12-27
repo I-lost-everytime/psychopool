@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PsychoPoll – Admin Panel</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    button { padding: 10px 20px; margin: 5px; }
+    select, input { padding: 8px; margin: 5px; }
+  </style>
+</head>
+<body>
+
+<h2>🎤 PsychoPoll Admin Panel</h2>
+
+<p id="status">Status: Loading...</p>
+
+<hr>
+
+<h3>Start Round</h3>
+
+<label>Round Number:</label>
+<input type="number" id="roundNumber" value="1" />
+
+<br>
+
+<label>Question ID:</label>
+<input type="number" id="questionId" value="1" />
+
+<br><br>
+
+<button onclick="startRound()">▶️ Start Round</button>
+<button onclick="endRound()">⏹ End Round</button>
+
+<hr>
+
+<p id="msg"></p>
+
+<script src="js/admin.js"></script>
+</body>
+</html>
