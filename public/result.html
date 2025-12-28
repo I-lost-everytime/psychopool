@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PsychoPoll – Results</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', 'Consolas', monospace;
+      background: #000;
+      color: #00ff00;
+      min-height: 100vh;
+      padding: 40px 20px;
+      position: relative;
+      overflow-x: hidden;
+      animation: fadeIn 0.6s ease;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent);
+      background-size: 50px 50px;
+      animation: gridScroll 20s linear infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    @keyframes gridScroll {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, 50px); }
+    }
+
+    /* Scanlines effect */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    h2 {
+      font-size: 3rem;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 60px;
+      color: #ff00ff;
+      text-shadow: 
+        0 0 10px #ff00ff,
+        0 0 20px #ff00ff,
+        0 0 30px #ff00ff,
+        0 0 40px #ff00ff,
+        0 0 70px #ff00ff;
+      animation: neonFlicker 3s infinite, slideDown 0.7s ease;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+    }
+
+    @keyframes neonFlicker {
+      0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        text-shadow: 
+          0 0 10px #ff00ff,
+          0 0 20px #ff00ff,
+          0 0 30px #ff00ff,
+          0 0 40px #ff00ff,
+          0 0 70px #ff00ff;
+      }
+      20%, 24%, 55% {
+        text-shadow: none;
+      }
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Option Container */
+    .option {
+      background: rgba(0, 0, 0, 0.9);
+      border: 3px solid;
+      padding: 25px 30px;
+      margin-bottom: 25px;
+      position: relative;
+      overflow: hidden;
+      animation: slideIn 0.6s ease backwards;
+      box-shadow: 0 0 30px currentColor;
+    }
+
+    .option:nth-child(1) {
+      animation-delay: 0.1s;
+      border-color: #00ff00;
+      color: #00ff00;
+    }
+
+    .option:nth-child(2) {
+      animation-delay: 0.2s;
+      border-color: #ff0000;
+      color: #ff0000;
+    }
+
+    .option:nth-child(3) {
+      animation-delay: 0.3s;
+      border-color: #ffff00;
+      color: #ffff00;
+    }
+
+    .option:nth-child(4) {
+      animation-delay: 0.4s;
+      border-color: #00ffff;
+      color: #00ffff;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .option::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 5px;
+      background: currentColor;
+      box-shadow: 0 0 20px currentColor;
+    }
+
+    /* Option Label and Percentage */
+    .option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      text-shadow: 0 0 10px currentColor;
+    }
+
+    .option span {
+      font-size: 1.8rem;
+      font-weight: 900;
+      min-width: 100px;
+      text-align: right;
+    }
+
+    /* Progress Bar Container */
+    .bar {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    /* Progress Bar Fill */
+    .bar > div {
+      height: 100%;
+      width: 0%;
+      background: currentColor;
+      box-shadow: 
+        0 0 20px currentColor,
+        inset 0 0 10px currentColor;
+      transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bar > div::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+      animation: barShine 2s ease-in-out infinite;
+    }
+
+    @keyframes barShine {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Winner Announcement */
+    h3 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      text-align: center;
+      margin: 60px 0 40px;
+      color: #00ff00;
+      text-shadow: 
+        0 0 10px #00ff00,
+        0 0 20px #00ff00,
+        0 0 30px #00ff00,
+        0 0 40px #00ff00;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      animation: winnerPulse 2s ease-in-out infinite;
+      position: relative;
+      padding: 30px;
+      border: 3px solid #00ff00;
+      background: rgba(0, 255, 0, 0.1);
+      box-shadow: 
+        0 0 40px rgba(0, 255, 0, 0.6),
+        inset 0 0 40px rgba(0, 255, 0, 0.2);
+    }
+
+    h3::before {
+      content: '★';
+      margin-right: 15px;
+      animation: starSpin 3s linear infinite;
+      display: inline-block;
+    }
+
+    h3::after {
+      content: '★';
+      margin-left: 15px;
+      animation: starSpin 3s linear infinite reverse;
+      display: inline-block;
+    }
+
+    @keyframes starSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes winnerPulse {
+      0%, 100% {
+        box-shadow: 
+          0 0 30px rgba(0, 255, 0, 0.5),
+          inset 0 0 30px rgba(0, 255, 0, 0.2);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 
+          0 0 60px rgba(0, 255, 0, 0.8),
+          inset 0 0 60px rgba(0, 255, 0, 0.3);
+        transform: scale(1.02);
+      }
+    }
+
+    /* Leaderboard Box */
+    #leaderboardBox {
+      display: none;
+      margin-top: 60px;
+      border: 4px solid #ff00ff;
+      background: rgba(0, 0, 0, 0.95);
+      padding: 30px;
+      box-shadow: 
+        0 0 50px rgba(255, 0, 255, 0.8),
+        inset 0 0 50px rgba(255, 0, 255, 0.2);
+      animation: leaderboardReveal 0.8s ease;
+      position: relative;
+    }
+
+    @keyframes leaderboardReveal {
+      from {
+        opacity: 0;
+        transform: scale(0.8) rotateX(-20deg);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) rotateX(0deg);
+      }
+    }
+
+    #leaderboardBox::before {
+      content: '🏆 LEADERBOARD 🏆';
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      padding: 10px 30px;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #ff00ff;
+      text-shadow: 0 0 20px #ff00ff;
+      letter-spacing: 3px;
+      border: 3px solid #ff00ff;
+      box-shadow: 0 0 30px #ff00ff;
+    }
+
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      background: transparent;
+    }
+
+    /* Winner highlight effect */
+    .option.winner {
+      animation: winnerFlash 1s ease infinite;
+      transform: scale(1.05);
+      z-index: 10;
+    }
+
+    @keyframes winnerFlash {
+      0%, 100% {
+        box-shadow: 0 0 30px currentColor;
+      }
+      50% {
+        box-shadow: 
+          0 0 60px currentColor,
+          0 0 80px currentColor,
+          inset 0 0 40px currentColor;
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      h2 {
+        font-size: 2.5rem;
+        letter-spacing: 3px;
+        margin-bottom: 40px;
+      }
+
+      .option {
+        padding: 20px 25px;
+        font-size: 1.7rem;
+      }
+
+      .option span {
+        font-size: 1.5rem;
+        min-width: 80px;
+      }
+
+      h3 {
+        font-size: 2rem;
+        letter-spacing: 3px;
+        padding: 25px 20px;
+      }
+
+      #leaderboardBox {
+        padding: 20px;
+      }
+
+      iframe {
+        height: 500px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 30px 15px;
+      }
+
+      h2 {
+        font-size: 2rem;
+        letter-spacing: 2px;
+        margin-bottom: 30px;
+      }
+
+      .option {
+        padding: 18px 20px;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        border-width: 2px;
+      }
+
+      .option span {
+        font-size: 1.3rem;
+        min-width: 70px;
+      }
+
+      .bar {
+        height: 6px;
+      }
+
+      h3 {
+        font-size: 1.5rem;
+        letter-spacing: 2px;
+        padding: 20px 15px;
+        margin: 40px 0 30px;
+        border-width: 2px;
+      }
+
+      h3::before,
+      h3::after {
+        margin: 0 10px;
+      }
+
+      #leaderboardBox {
+        padding: 15px;
+        border-width: 3px;
+        margin-top: 40px;
+      }
+
+      #leaderboardBox::before {
+        font-size: 1.2rem;
+        padding: 8px 20px;
+        top: -20px;
+      }
+
+      iframe {
+        height: 400px;
+      }
+    }
+
+    /* Corner decorations */
+    .corner-decoration {
+      position: fixed;
+      font-size: 3rem;
+      text-shadow: 0 0 30px currentColor;
+      animation: rotate 4s linear infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .corner-top-left {
+      top: 20px;
+      left: 20px;
+      color: #00ff00;
+    }
+
+    .corner-top-right {
+      top: 20px;
+      right: 20px;
+      color: #ff0000;
+    }
+
+    .corner-bottom-left {
+      bottom: 20px;
+      left: 20px;
+      color: #ffff00;
+    }
+
+    .corner-bottom-right {
+      bottom: 20px;
+      right: 20px;
+      color: #00ffff;
+    }
+
+    @keyframes rotate {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(180deg); }
+    }
+
+    /* Loading animation for bars */
+    @keyframes barLoad {
+      0% {
+        width: 0%;
+        opacity: 0;
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="corner-decoration corner-top-left">◢</div>
+<div class="corner-decoration corner-top-right">◣</div>
+<div class="corner-decoration corner-bottom-left">◥</div>
+<div class="corner-decoration corner-bottom-right">◤</div>
+
+<div class="container">
+  <h2>📊 ROUND RESULTS</h2>
+
+  <div class="option">
+    A <span id="pA">0%</span>
+    <div class="bar"><div id="barA"></div></div>
+  </div>
+
+  <div class="option">
+    B <span id="pB">0%</span>
+    <div class="bar"><div id="barB"></div></div>
+  </div>
+
+  <div class="option">
+    C <span id="pC">0%</span>
+    <div class="bar"><div id="barC"></div></div>
+  </div>
+
+  <div class="option">
+    D <span id="pD">0%</span>
+    <div class="bar"><div id="barD"></div></div>
+  </div>
+
+  <h3 id="winner"></h3>
+
+  <!-- Leaderboard reveal -->
+  <div id="leaderboardBox" style="display:none;">
+    <iframe src="/leaderboard.html"></iframe>
+  </div>
+</div>
+
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script src="/js/result.js"></script>
+
+</body>
+</html>

@@ -1,24 +1,42 @@
 const pool = require('../db');
 
+// ===============================
+// ▶️ START ROUND (ADMIN)
+// ===============================
 exports.startRound = async (req, res) => {
-  const { questionId, roundNumber } = req.body;
+  const {
+    questionId,
+    roundNumber,
+    points = 10,
+    scoring_type = 'LEAST',
+    priority_rules = null
+  } = req.body;
 
   if (!questionId || !roundNumber) {
-    return res.status(400).json({ error: 'questionId and roundNumber required' });
+    return res.status(400).json({
+      error: 'questionId and roundNumber are required'
+    });
   }
 
   try {
-    // 1️⃣ End any active round
+    // End any active round
     await pool.query(
       'UPDATE rounds SET is_active = false WHERE is_active = true'
     );
 
-    // 2️⃣ Create new round (inactive first)
+    // Create new round
     const result = await pool.query(
-      `INSERT INTO rounds (round_number, question_id, is_active, is_completed)
-       VALUES ($1, $2, true, false)
+      `INSERT INTO rounds
+        (round_number, question_id, is_active, is_completed, scoring_type, points, priority_rules)
+       VALUES ($1, $2, true, false, $3, $4, $5)
        RETURNING id`,
-      [roundNumber, questionId]
+      [
+        roundNumber,
+        questionId,
+        scoring_type,
+        points,
+        priority_rules
+      ]
     );
 
     res.json({
@@ -33,15 +51,21 @@ exports.startRound = async (req, res) => {
   }
 };
 
+// ===============================
+// ⏹ END ROUND (ADMIN)
+// ===============================
 exports.endRound = async (req, res) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // 1️⃣ Get active round
+    // Get active round
     const roundRes = await client.query(
-      'SELECT id FROM rounds WHERE is_active = true LIMIT 1'
+      `SELECT id, scoring_type, points, priority_rules
+       FROM rounds
+       WHERE is_active = true
+       LIMIT 1`
     );
 
     if (roundRes.rows.length === 0) {
@@ -49,16 +73,17 @@ exports.endRound = async (req, res) => {
       return res.status(400).json({ error: 'No active round' });
     }
 
-    const roundId = roundRes.rows[0].id;
+    const round = roundRes.rows[0];
+    const roundId = round.id;
 
-    // 2️⃣ Lock the round
+    // Lock round
     await client.query(
       'UPDATE rounds SET is_active = false WHERE id = $1',
       [roundId]
     );
 
-    // 3️⃣ Count votes
-    const voteCountsRes = await client.query(
+    // Count votes
+    const voteRes = await client.query(
       `SELECT selected_option, COUNT(*) AS count
        FROM votes
        WHERE round_id = $1
@@ -66,77 +91,78 @@ exports.endRound = async (req, res) => {
       [roundId]
     );
 
-    // Convert to object
     const counts = { A: 0, B: 0, C: 0, D: 0 };
-    voteCountsRes.rows.forEach(row => {
-      counts[row.selected_option] = parseInt(row.count);
+    voteRes.rows.forEach(r => {
+      counts[r.selected_option] = parseInt(r.count);
     });
 
-    const minCount = Math.min(...Object.values(counts));
+    const values = Object.values(counts);
 
-    const winningOptions = Object.keys(counts).filter(
-      opt => counts[opt] === minCount
+    // Determine winners
+    let winningOptions = [];
+
+    if (round.scoring_type === 'LEAST') {
+      const min = Math.min(...values.filter(v => v > 0));
+      winningOptions = Object.keys(counts).filter(
+        o => counts[o] === min
+      );
+    }
+
+    if (round.scoring_type === 'MOST') {
+      const max = Math.max(...values);
+      winningOptions = Object.keys(counts).filter(
+        o => counts[o] === max
+      );
+    }
+
+    // Award points (non-priority)
+    if (round.scoring_type !== 'PRIORITY') {
+      await client.query(
+        `UPDATE users
+         SET score = score + $1,
+             rounds_played = rounds_played + 1
+         WHERE id IN (
+           SELECT user_id
+           FROM votes
+           WHERE round_id = $2
+           AND selected_option = ANY($3)
+         )`,
+        [round.points, roundId, winningOptions]
+      );
+    }
+
+    // Save results (IMPORTANT)
+    await client.query(
+      `INSERT INTO round_results (round_id, option_counts, winning_options)
+       VALUES ($1, $2::jsonb, $3::jsonb)`,
+      [
+        roundId,
+        JSON.stringify(counts),
+        JSON.stringify(winningOptions)
+      ]
     );
 
-    // 4️⃣ Award points (+10)
-    await client.query(
-      `UPDATE users
-       SET score = score + 10,
-           rounds_played = rounds_played + 1
-       WHERE id IN (
-         SELECT user_id
-         FROM votes
-         WHERE round_id = $1
-         AND selected_option = ANY($2)
-       )`,
-      [roundId, winningOptions]
-    );
-
-    // 5️⃣ Save round result
-    await client.query(
-  `INSERT INTO round_results (round_id, option_counts, winning_options)
-   VALUES ($1, $2::jsonb, $3::jsonb)`,
-  [
-    roundId,
-    JSON.stringify(counts),
-    JSON.stringify(winningOptions)
-  ]
-);
-
-
-    // 6️⃣ Clear votes
+    // Cleanup votes
     await client.query(
       'DELETE FROM votes WHERE round_id = $1',
       [roundId]
     );
 
-    // 7️⃣ Mark round completed
+    // Mark round completed
     await client.query(
-      'UPDATE rounds SET is_completed = true, result_visible = true WHERE id = $1',
+      'UPDATE rounds SET is_completed = true WHERE id = $1',
       [roundId]
     );
 
     await client.query('COMMIT');
 
-// ⏱️ Auto-hide result after 5 seconds
-setTimeout(async () => {
-  try {
-    await pool.query(
-      'UPDATE rounds SET result_visible = false WHERE id = $1',
-      [roundId]
-    );
-  } catch (err) {
-    console.error('Failed to hide result:', err);
-  }
-}, 5000);
-
-res.json({
-  success: true,
-  roundId,
-  counts,
-  winningOptions,
-  message: 'Round ended and scores updated'
-});
+    res.json({
+      success: true,
+      roundId,
+      counts,
+      winningOptions,
+      message: 'Round ended and results calculated'
+    });
 
   } catch (err) {
     await client.query('ROLLBACK');
@@ -144,5 +170,43 @@ res.json({
     res.status(500).json({ error: 'Failed to end round' });
   } finally {
     client.release();
+  }
+};
+
+// ===============================
+// 📊 FINAL RESULTS (ADMIN ONLY)
+// ===============================
+exports.getLiveVoteStats = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT option_counts
+       FROM round_results
+       ORDER BY round_id DESC
+       LIMIT 1`
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ total: 0 });
+    }
+
+    const counts = result.rows[0].option_counts;
+
+    const total =
+      (counts.A || 0) +
+      (counts.B || 0) +
+      (counts.C || 0) +
+      (counts.D || 0);
+
+    res.json({
+      A: counts.A || 0,
+      B: counts.B || 0,
+      C: counts.C || 0,
+      D: counts.D || 0,
+      total
+    });
+
+  } catch (err) {
+    console.error('getLiveVoteStats error:', err);
+    res.status(500).json({ error: 'Failed to fetch vote stats' });
   }
 };

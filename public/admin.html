@@ -1,40 +1,690 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PsychoPoll – Admin Panel</title>
+
   <style>
-    body { font-family: Arial; padding: 20px; }
-    button { padding: 10px 20px; margin: 5px; }
-    select, input { padding: 8px; margin: 5px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+    body {
+      font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000;
+      color: #fff;
+      height: 100vh;
+      padding: 15px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 255, 0.1) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: gridMove 20s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes gridMove {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, 50px); }
+    }
+
+    /* Glowing orbs */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 20%;
+      left: 20%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(0, 255, 255, 0.3), transparent 70%);
+      border-radius: 50%;
+      animation: float 8s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(100px, 50px) scale(1.2); }
+    }
+
+    .orb2 {
+      position: fixed;
+      top: 60%;
+      right: 10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(255, 0, 255, 0.3), transparent 70%);
+      border-radius: 50%;
+      animation: float2 10s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-80px, -60px) scale(1.3); }
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      animation: glitchIn 0.8s ease;
+    }
+
+    @keyframes glitchIn {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+        filter: hue-rotate(180deg);
+      }
+      20% {
+        transform: translate(-5px, 5px) scale(1.05);
+      }
+      40% {
+        transform: translate(5px, -5px) scale(0.95);
+      }
+      60% {
+        transform: translate(-3px, 3px) scale(1.02);
+      }
+      100% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+        filter: hue-rotate(0deg);
+      }
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      margin-bottom: 15px;
+      position: relative;
+      display: inline-block;
+      background: linear-gradient(90deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: neonGradient 3s linear infinite;
+      text-shadow: 
+        0 0 10px rgba(0, 255, 255, 0.8),
+        0 0 20px rgba(0, 255, 255, 0.6),
+        0 0 30px rgba(255, 0, 255, 0.4);
+    }
+
+    @keyframes neonGradient {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+
+    /* Status Card */
+    #status {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      border: 2px solid;
+      border-image: linear-gradient(90deg, #00ffff, #ff00ff, #00ffff) 1;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.5),
+        inset 0 0 20px rgba(0, 255, 255, 0.1);
+      transition: all 0.3s ease;
+      display: inline-block;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #status::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+      animation: statusScan 3s linear infinite;
+    }
+
+    @keyframes statusScan {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .status-waiting {
+      animation: statusPulse 2s ease-in-out infinite;
+      color: #ffff00;
+      text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00;
+    }
+
+    @keyframes statusPulse {
+      0%, 100% {
+        box-shadow: 
+          0 0 20px rgba(255, 255, 0, 0.5),
+          inset 0 0 20px rgba(255, 255, 0, 0.1);
+      }
+      50% {
+        box-shadow: 
+          0 0 40px rgba(255, 255, 0, 0.8),
+          inset 0 0 30px rgba(255, 255, 0, 0.2);
+      }
+    }
+
+    .status-active {
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+      animation: statusActive 1.5s ease-in-out infinite;
+    }
+
+    @keyframes statusActive {
+      0%, 100% {
+        box-shadow: 
+          0 0 20px rgba(0, 255, 0, 0.5),
+          inset 0 0 20px rgba(0, 255, 0, 0.1);
+      }
+      50% {
+        box-shadow: 
+          0 0 40px rgba(0, 255, 0, 0.8),
+          inset 0 0 30px rgba(0, 255, 0, 0.2);
+      }
+    }
+
+    /* Main Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sections */
+    section {
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      border: 2px solid;
+      border-image: linear-gradient(135deg, #00ffff, #ff00ff) 1;
+      border-radius: 0;
+      padding: 20px;
+      box-shadow: 
+        0 0 30px rgba(0, 255, 255, 0.3),
+        inset 0 0 30px rgba(0, 255, 255, 0.05);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      position: relative;
+      animation: sectionSlide 0.6s ease backwards;
+    }
+
+    section:nth-child(1) {
+      animation-delay: 0.1s;
+    }
+
+    section:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    @keyframes sectionSlide {
+      from {
+        opacity: 0;
+        transform: translateX(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    section:hover::before {
+      left: 100%;
+    }
+
+    section:hover {
+      box-shadow: 
+        0 0 40px rgba(0, 255, 255, 0.6),
+        inset 0 0 40px rgba(0, 255, 255, 0.1);
+      border-image: linear-gradient(135deg, #00ffff, #ff00ff, #ffff00) 1;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 15px;
+      color: #00ffff;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+      position: relative;
+      padding-left: 15px;
+    }
+
+    h2::before {
+      content: '▶';
+      position: absolute;
+      left: 0;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    /* Form Elements */
+    .form-row {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #ff00ff;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-shadow: 0 0 5px #ff00ff;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid #00ffff;
+      color: #00ffff;
+      font-size: 0.9rem;
+      font-family: 'Orbitron', monospace;
+      transition: all 0.3s ease;
+      outline: none;
+      box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+    }
+
+    input:hover, select:hover {
+      box-shadow: 
+        0 0 15px rgba(0, 255, 255, 0.4),
+        inset 0 0 15px rgba(0, 255, 255, 0.2);
+      border-color: #ff00ff;
+    }
+
+    input:focus, select:focus {
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.6),
+        inset 0 0 20px rgba(0, 255, 255, 0.3);
+      border-color: #ffff00;
+      color: #ffff00;
+      text-shadow: 0 0 5px #ffff00;
+    }
+
+    input::placeholder {
+      color: rgba(0, 255, 255, 0.4);
+    }
+
+    /* Priority Box */
+    #priorityBox {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(255, 0, 255, 0.1);
+      border: 1px dashed #ff00ff;
+      box-shadow: inset 0 0 20px rgba(255, 0, 255, 0.2);
+      animation: prioritySlide 0.4s ease;
+    }
+
+    @keyframes prioritySlide {
+      from {
+        opacity: 0;
+        max-height: 0;
+        padding: 0 12px;
+      }
+      to {
+        opacity: 1;
+        max-height: 300px;
+        padding: 12px;
+      }
+    }
+
+    /* Buttons */
+    .button-group {
+      margin-top: auto;
+      padding-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: 2px solid;
+      background: rgba(0, 0, 0, 0.8);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent);
+      transform: translate(-50%, -50%);
+      transition: width 0.5s ease, height 0.5s ease;
+      border-radius: 50%;
+    }
+
+    button:active::before {
+      width: 400px;
+      height: 400px;
+    }
+
+    button:hover {
+      transform: translateY(-3px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    /* Start Button */
+    button.start-btn {
+      border-color: #00ff00;
+      color: #00ff00;
+      box-shadow: 
+        0 0 20px rgba(0, 255, 0, 0.4),
+        inset 0 0 20px rgba(0, 255, 0, 0.1);
+      text-shadow: 0 0 10px #00ff00;
+    }
+
+    button.start-btn:hover {
+      box-shadow: 
+        0 0 40px rgba(0, 255, 0, 0.8),
+        inset 0 0 30px rgba(0, 255, 0, 0.2);
+      background: rgba(0, 255, 0, 0.1);
+    }
+
+    /* End Button */
+    button.end-btn {
+      border-color: #ff0000;
+      color: #ff0000;
+      box-shadow: 
+        0 0 20px rgba(255, 0, 0, 0.4),
+        inset 0 0 20px rgba(255, 0, 0, 0.1);
+      text-shadow: 0 0 10px #ff0000;
+    }
+
+    button.end-btn:hover {
+      box-shadow: 
+        0 0 40px rgba(255, 0, 0, 0.8),
+        inset 0 0 30px rgba(255, 0, 0, 0.2);
+      background: rgba(255, 0, 0, 0.1);
+    }
+
+    /* Secondary Button */
+    button.secondary {
+      border-color: #0080ff;
+      color: #0080ff;
+      box-shadow: 
+        0 0 20px rgba(0, 128, 255, 0.4),
+        inset 0 0 20px rgba(0, 128, 255, 0.1);
+      text-shadow: 0 0 10px #0080ff;
+    }
+
+    button.secondary:hover {
+      box-shadow: 
+        0 0 40px rgba(0, 128, 255, 0.8),
+        inset 0 0 30px rgba(0, 128, 255, 0.2);
+      background: rgba(0, 128, 255, 0.1);
+    }
+
+    /* Disabled Button */
+    button:disabled {
+      background: rgba(0, 0, 0, 0.5);
+      color: #333;
+      border-color: #333;
+      cursor: not-allowed;
+      box-shadow: none;
+      text-shadow: none;
+    }
+
+    button:disabled:hover {
+      transform: none;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    /* Message Display */
+    #msg {
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid #00ffff;
+      padding: 12px 16px;
+      margin-top: 15px;
+      font-size: 0.85rem;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+      color: #00ffff;
+      text-shadow: 0 0 5px #00ffff;
+    }
+
+    #msg:not(:empty) {
+      opacity: 1;
+      transform: translateY(0);
+      animation: messageGlow 0.5s ease;
+    }
+
+    @keyframes messageGlow {
+      0% {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        letter-spacing: 2px;
+      }
+
+      section {
+        padding: 15px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: 1.2rem;
+      }
+
+      #status {
+        font-size: 0.85rem;
+        padding: 10px 16px;
+      }
+
+      h2 {
+        font-size: 1.1rem;
+      }
+
+      section {
+        padding: 12px;
+      }
+
+      button {
+        padding: 10px 16px;
+        font-size: 0.8rem;
+      }
+    }
+
+    /* Scrollbar */
+    section::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    section::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    section::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #00ffff, #ff00ff);
+      box-shadow: 0 0 10px #00ffff;
+    }
+
+    section::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ff00ff, #00ffff);
+      box-shadow: 0 0 15px #ff00ff;
+    }
   </style>
 </head>
 <body>
 
-<h2>🎤 PsychoPoll Admin Panel</h2>
+<div class="orb2"></div>
 
-<p id="status">Status: Loading...</p>
+<div class="container">
+  <div class="header">
+    <h1>⚡ PSYCHOPOLL ADMIN ⚡</h1>
+    <div id="status" class="status-loading">STATUS: LOADING</div>
+  </div>
 
-<hr>
+  <div class="main-grid">
+    <!-- START ROUND -->
+    <section>
+      <h2>Start Round</h2>
 
-<h3>Start Round</h3>
+      <div class="form-row">
+        <label>Round Number</label>
+        <input type="number" id="roundNumber" placeholder="1" />
+      </div>
 
-<label>Round Number:</label>
-<input type="number" id="roundNumber" value="1" />
+      <div class="form-row">
+        <label>Question ID</label>
+        <input type="number" id="questionId" placeholder="ID" />
+      </div>
 
-<br>
+      <div class="form-row">
+        <label>Points</label>
+        <input type="number" id="points" value="10" />
+      </div>
 
-<label>Question ID:</label>
-<input type="number" id="questionId" value="1" />
+      <div class="form-row">
+        <label>Scoring Type</label>
+        <select id="scoringType">
+          <option value="LEAST">Least Selected</option>
+          <option value="MOST">Most Selected</option>
+          <option value="PRIORITY">Priority Based</option>
+        </select>
+      </div>
 
-<br><br>
+      <div id="priorityBox" style="display:none;">
+        <div class="form-row">
+          <label>Rank 1 Points</label>
+          <input type="number" id="p1" value="10" />
+        </div>
+        <div class="form-row">
+          <label>Rank 2 Points</label>
+          <input type="number" id="p2" value="5" />
+        </div>
+      </div>
 
-<button onclick="startRound()">▶️ Start Round</button>
-<button onclick="endRound()">⏹ End Round</button>
+      <div class="button-group">
+        <button class="start-btn" onclick="startRound()">◉ Start Round</button>
+      </div>
+    </section>
 
-<hr>
+    <!-- END ROUND -->
+    <section>
+      <h2>Control Panel</h2>
 
-<p id="msg"></p>
+      <div class="button-group">
+        <button class="end-btn" onclick="endRound()">■ End Round</button>
 
-<script src="js/admin.js"></script>
+        <button
+          id="viewResultsBtn"
+          class="secondary"
+          onclick="window.location.href='/result.html'"
+          disabled
+        >
+          ◈ View Results
+        </button>
+      </div>
+
+      <div id="msg"></div>
+    </section>
+  </div>
+</div>
+
+<script src="/js/admin.js"></script>
+
 </body>
 </html>

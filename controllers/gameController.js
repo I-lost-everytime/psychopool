@@ -1,5 +1,8 @@
 const pool = require('../db');
 
+// ===============================
+// 👤 JOIN GAME
+// ===============================
 exports.joinGame = async (req, res) => {
   const { name } = req.body;
 
@@ -23,6 +26,9 @@ exports.joinGame = async (req, res) => {
   }
 };
 
+// ===============================
+// 🔄 CURRENT ROUND (USER)
+// ===============================
 exports.getCurrentRound = async (req, res) => {
   try {
     const result = await pool.query(
@@ -30,7 +36,6 @@ exports.getCurrentRound = async (req, res) => {
               r.round_number,
               r.is_active,
               r.is_completed,
-              r.result_visible,
               q.question_text,
               q.option_a,
               q.option_b,
@@ -42,21 +47,14 @@ exports.getCurrentRound = async (req, res) => {
        LIMIT 1`
     );
 
+    // No round yet
     if (result.rows.length === 0) {
       return res.json({ status: 'WAITING' });
     }
 
     const round = result.rows[0];
 
-    // 🧠 RESULT PHASE
-    if (round.result_visible) {
-      return res.json({
-        status: 'RESULT',
-        round
-      });
-    }
-
-    // 🧠 ACTIVE PHASE
+    // 🟢 ACTIVE ROUND
     if (round.is_active) {
       return res.json({
         status: 'ACTIVE',
@@ -64,7 +62,14 @@ exports.getCurrentRound = async (req, res) => {
       });
     }
 
-    // 🧠 WAITING FOR NEXT ROUND
+    // 🔴 ROUND ENDED (ADMIN HANDLES RESULTS)
+    if (round.is_completed) {
+      return res.json({
+        status: 'RESULT'
+      });
+    }
+
+    // ⚪ WAITING
     return res.json({ status: 'WAITING' });
 
   } catch (err) {
@@ -73,7 +78,9 @@ exports.getCurrentRound = async (req, res) => {
   }
 };
 
-
+// ===============================
+// 🗳️ SUBMIT VOTE
+// ===============================
 exports.submitVote = async (req, res) => {
   const { userId, roundId, selectedOption } = req.body;
 
@@ -86,7 +93,7 @@ exports.submitVote = async (req, res) => {
   }
 
   try {
-    // 1️⃣ Check if round is active
+    // Check if round is active
     const roundCheck = await pool.query(
       'SELECT is_active FROM rounds WHERE id = $1',
       [roundId]
@@ -96,17 +103,16 @@ exports.submitVote = async (req, res) => {
       return res.status(403).json({ error: 'Voting is closed' });
     }
 
-    // 2️⃣ Insert vote (DB enforces one vote per user per round)
+    // Insert vote (unique constraint protects duplicates)
     await pool.query(
       `INSERT INTO votes (user_id, round_id, selected_option)
        VALUES ($1, $2, $3)`,
       [userId, roundId, selectedOption]
     );
 
-    res.json({ success: true, message: 'Vote submitted' });
+    res.json({ success: true });
 
   } catch (err) {
-    // Duplicate vote protection
     if (err.code === '23505') {
       return res.status(409).json({ error: 'You have already voted' });
     }
@@ -115,6 +121,10 @@ exports.submitVote = async (req, res) => {
     res.status(500).json({ error: 'Failed to submit vote' });
   }
 };
+
+// ===============================
+// 🏆 LEADERBOARD
+// ===============================
 exports.getLeaderboard = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
@@ -136,4 +146,3 @@ exports.getLeaderboard = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 };
-
