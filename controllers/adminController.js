@@ -19,6 +19,18 @@ exports.startRound = async (req, res) => {
   }
 
   try {
+    // Validate question exists
+    const questionCheck = await pool.query(
+      'SELECT id FROM questions WHERE id = $1',
+      [questionId]
+    );
+
+    if (questionCheck.rows.length === 0) {
+      return res.status(400).json({
+        error: `Question with ID ${questionId} does not exist`
+      });
+    }
+
     // End any active round
     await pool.query(
       'UPDATE rounds SET is_active = false WHERE is_active = true'
@@ -97,26 +109,39 @@ exports.endRound = async (req, res) => {
     });
 
     const values = Object.values(counts);
+    const totalVotes = values.reduce((sum, v) => sum + v, 0);
 
     // Determine winners
     let winningOptions = [];
 
     if (round.scoring_type === 'LEAST') {
-      const min = Math.min(...values.filter(v => v > 0));
-      winningOptions = Object.keys(counts).filter(
-        o => counts[o] === min
-      );
+      // Filter out zero votes and find minimum
+      const nonZeroValues = values.filter(v => v > 0);
+      if (nonZeroValues.length === 0) {
+        // No votes at all - no winners
+        winningOptions = [];
+      } else {
+        const min = Math.min(...nonZeroValues);
+        winningOptions = Object.keys(counts).filter(
+          o => counts[o] === min && counts[o] > 0
+        );
+      }
     }
 
     if (round.scoring_type === 'MOST') {
-      const max = Math.max(...values);
-      winningOptions = Object.keys(counts).filter(
-        o => counts[o] === max
-      );
+      if (totalVotes === 0) {
+        // No votes - no winners
+        winningOptions = [];
+      } else {
+        const max = Math.max(...values);
+        winningOptions = Object.keys(counts).filter(
+          o => counts[o] === max && counts[o] > 0
+        );
+      }
     }
 
-    // Award points (non-priority)
-    if (round.scoring_type !== 'PRIORITY') {
+    // Award points (non-priority) - only if there are winners
+    if (round.scoring_type !== 'PRIORITY' && winningOptions.length > 0) {
       await client.query(
         `UPDATE users
          SET score = score + $1,
@@ -128,6 +153,18 @@ exports.endRound = async (req, res) => {
            AND selected_option = ANY($3)
          )`,
         [round.points, roundId, winningOptions]
+      );
+    } else if (round.scoring_type !== 'PRIORITY') {
+      // No winners but still increment rounds_played for all voters
+      await client.query(
+        `UPDATE users
+         SET rounds_played = rounds_played + 1
+         WHERE id IN (
+           SELECT user_id
+           FROM votes
+           WHERE round_id = $1
+         )`,
+        [roundId]
       );
     }
 

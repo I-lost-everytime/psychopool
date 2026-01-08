@@ -550,6 +550,22 @@
     <button onclick="joinGame()">▶ JOIN GAME ◀</button>
 
     <p id="msg"></p>
+
+    <!-- Logout option (hidden by default, shown if user exists) -->
+    <div id="logoutSection" style="display: none; margin-top: 20px; text-align: center;">
+      <p style="color: #00ffff; font-size: 0.9rem; margin-bottom: 10px;">
+        Already registered as: <span id="currentUserName" style="color: #ff00ff; font-weight: bold;"></span>
+      </p>
+      <button onclick="logout()" style="
+        width: auto;
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        background: rgba(255, 0, 0, 0.1);
+        border-color: #ff0000;
+        color: #ff0000;
+        margin-top: 10px;
+      ">Change User</button>
+    </div>
   </div>
 </div>
 
